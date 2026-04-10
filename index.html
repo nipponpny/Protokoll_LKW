@@ -22,7 +22,7 @@
                 <option value="pl">Polski 🇵🇱</option>
                 <option value="ru">Pусский 🇷🇺</option>
             </select>
-            <img src="https://www.ausbildung.de/uploads/image/42/4254aa96-3cd5-4c1a-86c6-bb58e0c50498/corporation_gallery_645x418_Logo_neu.png" class="h-6">
+            <img src="https://ih1.redbubble.net/image.761262054.2536/flat,750x,075,f-pad,750x1000,f8f8f8.jpg" class="h-12 rounded-lg">
         </header>
 
         <div class="bg-white p-6 rounded-[2rem] shadow-lg space-y-4 text-left border border-slate-200">
@@ -122,7 +122,6 @@
 
             const doc = new jsPDF();
             
-            // PDF Design - Deutsch
             doc.setFontSize(20);
             doc.setTextColor(0, 70, 0); 
             doc.text("LKW ÜBERGABEPROTOKOLL", 20, 25);
@@ -161,7 +160,6 @@
             });
 
             const pdfBlob = doc.output('blob');
-            // GEÄNDERT: Neuer Dateiname Trailer_LKW
             const fileName = `Protokoll_${trailer}_${lkw}.pdf`;
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
