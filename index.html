@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen p-4 font-sans">
+<body class="bg-slate-100 min-h-screen p-4">
 
     <div class="max-w-md mx-auto space-y-4">
         <header class="bg-white p-4 rounded-2xl shadow flex justify-center border-b-4 border-green-700">
@@ -17,25 +17,27 @@
         <div class="bg-white p-6 rounded-[2rem] shadow-lg space-y-4">
             <input type="text" id="lkw" placeholder="LKW KENNZEICHEN" class="w-full border-2 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
             <input type="text" id="trailer" placeholder="TRAILER KENNZEICHEN" class="w-full border-2 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
-            <textarea id="info" placeholder="BEMERKUNG" class="w-full border-2 p-3 rounded-xl outline-none focus:border-purple-600" rows="2"></textarea>
+            <textarea id="info" placeholder="BEMERKUNG" class="w-full border-2 p-3 rounded-xl outline-none" rows="2"></textarea>
             
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="document.getElementById('cam-tank').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow active:bg-purple-900">Tank Foto</button>
-                <button onclick="document.getElementById('cam-schaden').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow active:bg-purple-900">Schaden (+)</button>
+                <button onclick="document.getElementById('cam-tank').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow">Tank Foto</button>
+                <button onclick="document.getElementById('cam-schaden').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow">Schaden (+)</button>
             </div>
-            <div id="status" class="text-center text-xs font-bold text-green-600"></div>
+            <div id="status" class="text-center text-xs font-bold text-green-600 uppercase"></div>
         </div>
 
-        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-green-800 text-white font-black py-6 rounded-[2rem] text-xl shadow-2xl uppercase active:bg-green-950">
+        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-green-800 text-white font-black py-6 rounded-[2rem] text-xl shadow-2xl uppercase">
             PDF Erstellen
         </button>
 
-        <div id="download-area" class="hidden space-y-4 p-6 bg-white rounded-[2rem] shadow-xl border-2 border-green-600 animate-bounce">
-            <p class="text-center font-bold text-red-600">PDF FERTIG!</p>
-            <a id="direct-link" href="#" target="_blank" class="block w-full bg-blue-600 text-white text-center py-5 rounded-2xl font-black uppercase shadow-lg">
-                Senden / Öffnen
+        <div id="download-area" class="hidden space-y-4 p-6 bg-white rounded-[2rem] shadow-xl border-4 border-blue-500">
+            <p class="text-center font-bold text-blue-600 uppercase">PDF IST BEREIT!</p>
+            
+            <a id="direct-link" href="" target="_blank" rel="noopener noreferrer" class="block w-full bg-blue-600 text-white text-center py-5 rounded-2xl font-black uppercase shadow-lg">
+                HIER KLICKEN ZUM SENDEN
             </a>
-            <p class="text-[10px] text-gray-400 text-center uppercase">Falls kein Menü kommt: Link kurz gedrückt halten!</p>
+            
+            <p class="text-[10px] text-gray-500 text-center">Tipp: Wenn kein Menü kommt, Link gedrückt halten!</p>
         </div>
     </div>
 
@@ -46,88 +48,47 @@
         const { jsPDF } = window.jspdf;
         let pTank = null, pSchaden = [];
 
-        // Fotos verarbeiten
         document.getElementById('cam-tank').onchange = e => {
-            if(!e.target.files[0]) return;
-            const r = new FileReader(); r.onload = ev => { pTank = ev.target.result; msg("Tank-Foto OK ✅"); }; r.readAsDataURL(e.target.files[0]);
+            const r = new FileReader(); r.onload = ev => { pTank = ev.target.result; msg("Tank OK ✅"); }; r.readAsDataURL(e.target.files[0]);
         };
         document.getElementById('cam-schaden').onchange = e => {
-            if(!e.target.files[0]) return;
-            const r = new FileReader(); r.onload = ev => { pSchaden.push(ev.target.result); msg(pSchaden.length + " Schaden-Fotos OK ✅"); }; r.readAsDataURL(e.target.files[0]);
+            const r = new FileReader(); r.onload = ev => { pSchaden.push(ev.target.result); msg(pSchaden.length + " Schaden OK ✅"); }; r.readAsDataURL(e.target.files[0]);
         };
         function msg(t) { document.getElementById('status').innerText = t; }
 
-        async function generatePDF() {
-            const l = document.getElementById('lkw').value.toUpperCase().trim();
-            const t = document.getElementById('trailer').value.toUpperCase().trim();
-            const info = document.getElementById('info').value.trim() || "Keine Bemerkungen";
+        function generatePDF() {
+            const l = document.getElementById('lkw').value.toUpperCase().trim() || "LKW";
+            const t = document.getElementById('trailer').value.toUpperCase().trim() || "TRAILER";
 
-            if(!l || !t) return alert("Bitte LKW und Trailer Kennzeichen eingeben!");
-
-            msg("PDF wird generiert...");
             const doc = new jsPDF();
-            
-            // Design
-            doc.setFontSize(22); doc.setTextColor(0, 70, 0); doc.text("LKW PROTOKOLL", 20, 25);
-            doc.setDrawColor(0, 70, 0); doc.line(20, 30, 190, 30);
-            
-            doc.setFontSize(12); doc.setTextColor(0, 0, 0);
-            doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 45);
-            doc.setFont("helvetica", "bold");
-            doc.text(`LKW: ${l}`, 20, 55);
-            doc.text(`Trailer: ${t}`, 20, 65);
-            doc.setFont("helvetica", "normal");
-            doc.text(`Bemerkung:`, 20, 80);
-            doc.text(info, 20, 88, { maxWidth: 170 });
+            doc.setFontSize(22); doc.text("LKW PROTOKOLL", 20, 25);
+            doc.setFontSize(12); doc.text(`LKW: ${l} | Trailer: ${t}`, 20, 40);
+            doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 50);
 
-            // Bilder hinzufügen
-            let y = 110;
-            if(pTank) {
-                doc.text("Tank-Foto:", 20, y - 5);
-                doc.addImage(pTank, 'JPEG', 20, y, 70, 50);
-                y += 70;
-            }
-            
-            pSchaden.forEach((img, index) => {
-                if (y > 220) { doc.addPage(); y = 30; }
-                doc.text(`Schaden-Foto ${index + 1}:`, 20, y - 5);
-                doc.addImage(img, 'JPEG', 20, y, 70, 50);
-                y += 70;
-            });
+            if(pTank) doc.addImage(pTank, 'JPEG', 20, 60, 60, 45);
+            pSchaden.forEach((img) => { doc.addPage(); doc.addImage(img, 'JPEG', 10, 10, 180, 140); });
 
-            // Datei-Erzeugung
-            const pdfBlob = doc.output('blob');
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            const fileName = `Protokoll_${l}.pdf`;
+            // DER TRICK: Wir nutzen das "Data-URI" Format. Das ist kein Link zu einer Datei, 
+            // sondern die Datei SELBST als langer Textstring.
+            const pdfBase64 = doc.output('datauristring');
             
-            // Button-Umschaltung
             document.getElementById('btn-submit').classList.add('hidden');
-            const area = document.getElementById('download-area');
-            area.classList.remove('hidden');
+            document.getElementById('download-area').classList.remove('hidden');
             
             const link = document.getElementById('direct-link');
-            link.href = pdfUrl;
-            link.download = fileName;
+            link.href = pdfBase64;
+            link.setAttribute("download", `Protokoll_${l}.pdf`);
 
-            // Klick-Logik für maximale Kompatibilität
-            link.onclick = async (e) => {
-                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-                
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try {
-                        await navigator.share({
-                            files: [file],
-                            title: 'LKW Protokoll',
-                            text: `Protokoll ${l} / ${t}`
-                        });
-                        e.preventDefault(); // Verhindert Download wenn Share klappt
-                    } catch (err) {
-                        // Fallback: Link öffnet PDF im neuen Tab (Samsung Fix)
-                        console.log("Share failed, using default link behavior");
-                    }
+            // Wir versuchen trotzdem das Teilen-Menü zu triggern, falls das Handy es kann
+            link.onclick = (event) => {
+                if (navigator.share) {
+                    const blob = doc.output('blob');
+                    const file = new File([blob], `Protokoll_${l}.pdf`, { type: 'application/pdf' });
+                    navigator.share({ files: [file] }).catch(() => {
+                        // Falls Share scheitert, lassen wir den Link-Klick (Öffnen/Download) einfach durchlaufen
+                    });
                 }
             };
-            msg("Bereit zum Senden!");
         }
     </script>
 </body>
