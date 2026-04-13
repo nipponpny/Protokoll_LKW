@@ -7,33 +7,35 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen font-sans p-4">
+<body class="bg-slate-100 min-h-screen p-4 font-sans">
 
-    <div class="max-w-md mx-auto space-y-4 text-center">
-        <header class="bg-white p-4 rounded-2xl shadow border-b-4 border-green-700 flex justify-center">
+    <div class="max-w-md mx-auto space-y-4">
+        <header class="bg-white p-4 rounded-2xl shadow flex justify-center border-b-4 border-green-700">
              <img src="https://ih1.redbubble.net/image.761262054.2536/flat,750x,075,f-pad,750x1000,f8f8f8.jpg" class="h-16">
         </header>
 
-        <div class="bg-white p-6 rounded-[2rem] shadow-lg space-y-4 text-left border border-slate-200">
-            <input type="text" id="lkw" placeholder="LKW KENNZEICHEN" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
-            <input type="text" id="trailer" placeholder="TRAILER KENNZEICHEN" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
-            <textarea id="info" placeholder="BEMERKUNG" class="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-purple-600" rows="2"></textarea>
+        <div class="bg-white p-6 rounded-[2rem] shadow-lg space-y-4">
+            <input type="text" id="lkw" placeholder="LKW KENNZEICHEN" class="w-full border-2 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
+            <input type="text" id="trailer" placeholder="TRAILER KENNZEICHEN" class="w-full border-2 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
+            <textarea id="info" placeholder="BEMERKUNG" class="w-full border-2 p-3 rounded-xl outline-none focus:border-purple-600" rows="2"></textarea>
             
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="document.getElementById('cam-tank').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow">Tank Foto</button>
-                <button onclick="document.getElementById('cam-schaden').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow">Schaden (+)</button>
+                <button onclick="document.getElementById('cam-tank').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow active:bg-purple-900">Tank Foto</button>
+                <button onclick="document.getElementById('cam-schaden').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow active:bg-purple-900">Schaden (+)</button>
             </div>
-            
-            <div id="status" class="text-xs font-bold text-gray-500 text-center"></div>
+            <div id="status" class="text-center text-xs font-bold text-green-600"></div>
         </div>
 
-        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-green-800 text-white font-black py-6 rounded-[2rem] text-xl shadow-2xl active:scale-95 transition-all uppercase">
+        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-green-800 text-white font-black py-6 rounded-[2rem] text-xl shadow-2xl uppercase active:bg-green-950">
             PDF Erstellen
         </button>
 
-        <div id="backup-zone" class="hidden space-y-3 p-4 bg-yellow-100 rounded-2xl border-2 border-yellow-400 text-sm font-bold">
-            <p>PDF ist fertig! Klicke hier zum Senden:</p>
-            <button id="btn-share-final" class="w-full bg-blue-600 text-white py-4 rounded-xl uppercase shadow-lg">Jetzt an WhatsApp senden</button>
+        <div id="download-area" class="hidden space-y-4 p-6 bg-white rounded-[2rem] shadow-xl border-2 border-green-600 animate-bounce">
+            <p class="text-center font-bold text-red-600">PDF FERTIG!</p>
+            <a id="direct-link" href="#" target="_blank" class="block w-full bg-blue-600 text-white text-center py-5 rounded-2xl font-black uppercase shadow-lg">
+                Senden / Öffnen
+            </a>
+            <p class="text-[10px] text-gray-400 text-center uppercase">Falls kein Menü kommt: Link kurz gedrückt halten!</p>
         </div>
     </div>
 
@@ -42,57 +44,90 @@
 
     <script>
         const { jsPDF } = window.jspdf;
-        let photoTank = null;
-        let photosSchaden = [];
+        let pTank = null, pSchaden = [];
 
+        // Fotos verarbeiten
         document.getElementById('cam-tank').onchange = e => {
-            const reader = new FileReader();
-            reader.onload = ev => { photoTank = ev.target.result; document.getElementById('status').innerText = "Tank-Foto bereit!"; };
-            reader.readAsDataURL(e.target.files[0]);
+            if(!e.target.files[0]) return;
+            const r = new FileReader(); r.onload = ev => { pTank = ev.target.result; msg("Tank-Foto OK ✅"); }; r.readAsDataURL(e.target.files[0]);
         };
-
         document.getElementById('cam-schaden').onchange = e => {
-            const reader = new FileReader();
-            reader.onload = ev => { photosSchaden.push(ev.target.result); document.getElementById('status').innerText = photosSchaden.length + " Schaden-Fotos bereit!"; };
-            reader.readAsDataURL(e.target.files[0]);
+            if(!e.target.files[0]) return;
+            const r = new FileReader(); r.onload = ev => { pSchaden.push(ev.target.result); msg(pSchaden.length + " Schaden-Fotos OK ✅"); }; r.readAsDataURL(e.target.files[0]);
         };
+        function msg(t) { document.getElementById('status').innerText = t; }
 
         async function generatePDF() {
-            const lkw = document.getElementById('lkw').value.toUpperCase().trim();
-            const trailer = document.getElementById('trailer').value.toUpperCase().trim();
-            if(!lkw || !trailer) return alert("Bitte Kennzeichen eingeben!");
+            const l = document.getElementById('lkw').value.toUpperCase().trim();
+            const t = document.getElementById('trailer').value.toUpperCase().trim();
+            const info = document.getElementById('info').value.trim() || "Keine Bemerkungen";
 
-            document.getElementById('btn-submit').innerText = "Wird erstellt...";
-            
+            if(!l || !t) return alert("Bitte LKW und Trailer Kennzeichen eingeben!");
+
+            msg("PDF wird generiert...");
             const doc = new jsPDF();
-            doc.text("LKW PROTOKOLL", 20, 20);
-            doc.text(`LKW: ${lkw} | Trailer: ${trailer}`, 20, 30);
-            doc.text(`Datum: ${new Date().toLocaleString()}`, 20, 40);
-            doc.text("Info: " + document.getElementById('info').value, 20, 50);
+            
+            // Design
+            doc.setFontSize(22); doc.setTextColor(0, 70, 0); doc.text("LKW PROTOKOLL", 20, 25);
+            doc.setDrawColor(0, 70, 0); doc.line(20, 30, 190, 30);
+            
+            doc.setFontSize(12); doc.setTextColor(0, 0, 0);
+            doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 45);
+            doc.setFont("helvetica", "bold");
+            doc.text(`LKW: ${l}`, 20, 55);
+            doc.text(`Trailer: ${t}`, 20, 65);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Bemerkung:`, 20, 80);
+            doc.text(info, 20, 88, { maxWidth: 170 });
 
-            if(photoTank) doc.addImage(photoTank, 'JPEG', 20, 60, 50, 40);
-            photosSchaden.forEach((img, i) => { doc.addPage(); doc.addImage(img, 'JPEG', 20, 20, 160, 120); });
+            // Bilder hinzufügen
+            let y = 110;
+            if(pTank) {
+                doc.text("Tank-Foto:", 20, y - 5);
+                doc.addImage(pTank, 'JPEG', 20, y, 70, 50);
+                y += 70;
+            }
+            
+            pSchaden.forEach((img, index) => {
+                if (y > 220) { doc.addPage(); y = 30; }
+                doc.text(`Schaden-Foto ${index + 1}:`, 20, y - 5);
+                doc.addImage(img, 'JPEG', 20, y, 70, 50);
+                y += 70;
+            });
 
+            // Datei-Erzeugung
             const pdfBlob = doc.output('blob');
-            const fileName = `Protokoll_${lkw}.pdf`;
-            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-            // Jetzt zeigen wir den Share-Button an
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            const fileName = `Protokoll_${l}.pdf`;
+            
+            // Button-Umschaltung
             document.getElementById('btn-submit').classList.add('hidden');
-            const bZone = document.getElementById('backup-zone');
-            bZone.classList.remove('hidden');
+            const area = document.getElementById('download-area');
+            area.classList.remove('hidden');
+            
+            const link = document.getElementById('direct-link');
+            link.href = pdfUrl;
+            link.download = fileName;
 
-            document.getElementById('btn-share-final').onclick = async () => {
-                if (navigator.share) {
+            // Klick-Logik für maximale Kompatibilität
+            link.onclick = async (e) => {
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
-                        await navigator.share({ files: [file], title: 'LKW Protokoll' });
-                    } catch (e) {
-                        doc.save(fileName); // Fallback: Download
+                        await navigator.share({
+                            files: [file],
+                            title: 'LKW Protokoll',
+                            text: `Protokoll ${l} / ${t}`
+                        });
+                        e.preventDefault(); // Verhindert Download wenn Share klappt
+                    } catch (err) {
+                        // Fallback: Link öffnet PDF im neuen Tab (Samsung Fix)
+                        console.log("Share failed, using default link behavior");
                     }
-                } else {
-                    doc.save(fileName); // Fallback: Download
                 }
             };
+            msg("Bereit zum Senden!");
         }
     </script>
 </body>
