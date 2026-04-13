@@ -15,7 +15,6 @@
 <body class="bg-slate-100 min-h-screen font-sans p-4">
 
     <div class="max-w-md mx-auto space-y-4">
-        
         <header class="bg-white p-4 rounded-2xl shadow flex justify-between items-center border-b-4 border-dark-green">
             <select id="langSelect" onchange="updateLanguage()" class="bg-slate-100 p-2 rounded-xl font-bold text-sm outline-none">
                 <option value="de">Deutsch 🇩🇪</option>
@@ -35,7 +34,7 @@
                 <input type="text" id="trailer" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase mt-1 outline-none focus:border-vibe-purple">
             </div>
             <div>
-                <label id="label-info" class="text-xs font-black text-dark-green uppercase ml-1">Bemerkung / Info zu den Schäden</label>
+                <label id="label-info" class="text-xs font-black text-dark-green uppercase ml-1">Bemerkung / Info</label>
                 <textarea id="info" class="w-full border-2 border-slate-100 p-3 rounded-xl mt-1 outline-none focus:border-vibe-purple" rows="3"></textarea>
             </div>
             
@@ -44,7 +43,7 @@
                     <span id="label-tank" class="block font-black text-[10px] uppercase">Tank Foto</span>
                 </button>
                 <button onclick="triggerCamera('schaden')" class="bg-vibe-purple text-white p-4 rounded-2xl shadow-lg active:scale-95 transition-all text-center">
-                    <span id="label-schaden" class="block font-black text-[10px] uppercase">Schaden Fotos (+)</span>
+                    <span id="label-schaden" class="block font-black text-[10px] uppercase">Schaden Foto (+)</span>
                 </button>
             </div>
 
@@ -112,49 +111,26 @@
         async function generatePDF() {
             const lkw = document.getElementById('lkw').value.toUpperCase().trim();
             const trailer = document.getElementById('trailer').value.toUpperCase().trim();
-            const infoValue = document.getElementById('info').value.trim();
-            const infoText = infoValue === "" ? "keine Angabe!" : infoValue;
+            const infoText = document.getElementById('info').value.trim() || "keine Angabe!";
 
-            if(!lkw || !trailer) {
-                alert("Bitte Kennzeichen für LKW und Trailer eingeben!");
-                return;
-            }
+            if(!lkw || !trailer) { alert("Bitte Kennzeichen eingeben!"); return; }
 
             const doc = new jsPDF();
-            
-            doc.setFontSize(20);
-            doc.setTextColor(0, 70, 0); 
-            doc.text("LKW ÜBERGABEPROTOKOLL", 20, 25);
-            doc.setDrawColor(0, 70, 0);
+            doc.setFontSize(20); doc.setTextColor(0, 70, 0); doc.text("LKW ÜBERGABEPROTOKOLL", 20, 25);
             doc.line(20, 30, 190, 30);
-
-            doc.setFontSize(11);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 40);
-            
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text(`LKW: ${lkw}`, 20, 55);
-            doc.text(`Trailer: ${trailer}`, 20, 65);
-            
-            doc.setFontSize(12);
-            doc.text(`Bemerkung / Info zu den Schäden:`, 20, 80);
-            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11); doc.setTextColor(0,0,0); doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 40);
+            doc.setFontSize(14); doc.setFont("helvetica", "bold");
+            doc.text(`LKW: ${lkw}`, 20, 55); doc.text(`Trailer: ${trailer}`, 20, 65);
+            doc.setFontSize(12); doc.text(`Info:`, 20, 80); doc.setFont("helvetica", "normal");
             doc.text(infoText, 20, 88, { maxWidth: 170 });
 
             let yPos = 110;
-
             if (photos.tank) {
-                doc.setFontSize(10);
-                doc.text("Tank Foto:", 20, yPos - 3);
                 doc.addImage(photos.tank, 'JPEG', 20, yPos, 80, 50);
                 yPos += 65;
             }
-
             photos.schaden.forEach((img, index) => {
                 if (yPos > 230) { doc.addPage(); yPos = 20; }
-                doc.setFontSize(10);
-                doc.text(`Schaden Foto ${index + 1}:`, 20, yPos - 3);
                 doc.addImage(img, 'JPEG', 20, yPos, 80, 50);
                 yPos += 65;
             });
@@ -163,18 +139,13 @@
             const fileName = `Protokoll_${trailer}_${lkw}.pdf`;
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-            if (navigator.share) {
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
-                    await navigator.share({
-                        files: [file],
-                        title: 'LKW Protokoll',
-                        text: `Protokoll für Trailer ${trailer} / LKW ${lkw}`
-                    });
-                } catch (err) {
-                    console.log("Teilen abgebrochen");
-                }
+                    await navigator.share({ files: [file], title: 'LKW Protokoll' });
+                } catch (err) { doc.save(fileName); }
             } else {
                 doc.save(fileName);
+                alert("Teilen nicht möglich. PDF wurde unter Downloads gespeichert!");
             }
         }
     </script>
