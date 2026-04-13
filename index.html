@@ -14,30 +14,31 @@
              <img src="https://ih1.redbubble.net/image.761262054.2536/flat,750x,075,f-pad,750x1000,f8f8f8.jpg" class="h-16">
         </header>
 
-        <div class="bg-white p-6 rounded-[2rem] shadow-lg space-y-4">
-            <input type="text" id="lkw" placeholder="LKW KENNZEICHEN" class="w-full border-2 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
-            <input type="text" id="trailer" placeholder="TRAILER KENNZEICHEN" class="w-full border-2 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
-            <textarea id="info" placeholder="BEMERKUNG" class="w-full border-2 p-3 rounded-xl outline-none" rows="2"></textarea>
+        <div class="bg-white p-6 rounded-[2rem] shadow-lg space-y-4 text-left border border-slate-200">
+            <input type="text" id="lkw" placeholder="LKW KENNZEICHEN" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
+            <input type="text" id="trailer" placeholder="TRAILER KENNZEICHEN" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
+            <textarea id="info" placeholder="BEMERKUNG" class="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-purple-600" rows="2"></textarea>
             
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="document.getElementById('cam-tank').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow">Tank Foto</button>
-                <button onclick="document.getElementById('cam-schaden').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow">Schaden (+)</button>
+                <button onclick="document.getElementById('cam-tank').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow active:bg-purple-900 transition-colors">Tank Foto</button>
+                <button onclick="document.getElementById('cam-schaden').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow active:bg-purple-900 transition-colors">Schaden (+)</button>
             </div>
+            
             <div id="status" class="text-center text-xs font-bold text-green-600 uppercase"></div>
         </div>
 
-        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-green-800 text-white font-black py-6 rounded-[2rem] text-xl shadow-2xl uppercase">
+        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-green-800 text-white font-black py-7 rounded-[2rem] text-xl shadow-2xl active:scale-95 transition-all uppercase">
             PDF Erstellen
         </button>
 
-        <div id="download-area" class="hidden space-y-4 p-6 bg-white rounded-[2rem] shadow-xl border-4 border-blue-500">
-            <p class="text-center font-bold text-blue-600 uppercase">PDF IST BEREIT!</p>
+        <div id="download-area" class="hidden space-y-4 p-6 bg-white rounded-[2rem] shadow-xl border-4 border-blue-600">
+            <p class="text-center font-bold text-blue-600 uppercase tracking-tighter">✅ PDF bereit zum Senden!</p>
             
-            <a id="direct-link" href="" target="_blank" rel="noopener noreferrer" class="block w-full bg-blue-600 text-white text-center py-5 rounded-2xl font-black uppercase shadow-lg">
-                HIER KLICKEN ZUM SENDEN
+            <a id="direct-link" href="#" target="_blank" rel="noopener noreferrer" class="block w-full bg-blue-600 text-white text-center py-5 rounded-2xl font-black uppercase shadow-lg active:bg-blue-800">
+                Hier klicken zum Senden
             </a>
             
-            <p class="text-[10px] text-gray-500 text-center">Tipp: Wenn kein Menü kommt, Link gedrückt halten!</p>
+            <p class="text-[10px] text-gray-500 text-center uppercase">Falls es nicht klappt: Button gedrückt halten und "In neuem Tab öffnen" wählen!</p>
         </div>
     </div>
 
@@ -49,46 +50,57 @@
         let pTank = null, pSchaden = [];
 
         document.getElementById('cam-tank').onchange = e => {
-            const r = new FileReader(); r.onload = ev => { pTank = ev.target.result; msg("Tank OK ✅"); }; r.readAsDataURL(e.target.files[0]);
+            if(!e.target.files[0]) return;
+            const r = new FileReader(); r.onload = ev => { pTank = ev.target.result; msg("Tank Foto OK ✅"); }; r.readAsDataURL(e.target.files[0]);
         };
         document.getElementById('cam-schaden').onchange = e => {
-            const r = new FileReader(); r.onload = ev => { pSchaden.push(ev.target.result); msg(pSchaden.length + " Schaden OK ✅"); }; r.readAsDataURL(e.target.files[0]);
+            if(!e.target.files[0]) return;
+            const r = new FileReader(); r.onload = ev => { pSchaden.push(ev.target.result); msg(pSchaden.length + " Schaden Fotos OK ✅"); }; r.readAsDataURL(e.target.files[0]);
         };
         function msg(t) { document.getElementById('status').innerText = t; }
 
         function generatePDF() {
             const l = document.getElementById('lkw').value.toUpperCase().trim() || "LKW";
             const t = document.getElementById('trailer').value.toUpperCase().trim() || "TRAILER";
+            const info = document.getElementById('info').value.trim() || "Keine Info";
 
+            msg("PDF wird vorbereitet...");
             const doc = new jsPDF();
-            doc.setFontSize(22); doc.text("LKW PROTOKOLL", 20, 25);
-            doc.setFontSize(12); doc.text(`LKW: ${l} | Trailer: ${t}`, 20, 40);
-            doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 50);
+            doc.setFontSize(22); doc.setTextColor(0, 70, 0); doc.text("LKW ÜBERGABEPROTOKOLL", 20, 25);
+            doc.line(20, 30, 190, 30);
+            
+            doc.setFontSize(12); doc.setTextColor(0, 0, 0);
+            doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 45);
+            doc.text(`LKW: ${l}`, 20, 55);
+            doc.text(`Trailer: ${t}`, 20, 65);
+            doc.text(`Bemerkung: ${info}`, 20, 80, { maxWidth: 170 });
 
-            if(pTank) doc.addImage(pTank, 'JPEG', 20, 60, 60, 45);
-            pSchaden.forEach((img) => { doc.addPage(); doc.addImage(img, 'JPEG', 10, 10, 180, 140); });
+            if(pTank) doc.addImage(pTank, 'JPEG', 20, 100, 70, 50);
+            pSchaden.forEach((img) => { doc.addPage(); doc.addImage(img, 'JPEG', 15, 15, 180, 135); });
 
-            // DER TRICK: Wir nutzen das "Data-URI" Format. Das ist kein Link zu einer Datei, 
-            // sondern die Datei SELBST als langer Textstring.
-            const pdfBase64 = doc.output('datauristring');
+            // Hier kommt der Samsung-Fix:
+            // Wir nutzen ein PDF-Blob-Objekt, das für Browser wie eine "echte" Internet-Datei aussieht.
+            const pdfBlob = doc.output('blob');
+            const pdfUrl = URL.createObjectURL(pdfBlob);
             
             document.getElementById('btn-submit').classList.add('hidden');
             document.getElementById('download-area').classList.remove('hidden');
             
             const link = document.getElementById('direct-link');
-            link.href = pdfBase64;
-            link.setAttribute("download", `Protokoll_${l}.pdf`);
+            link.href = pdfUrl;
+            link.download = `Protokoll_${l}.pdf`;
 
-            // Wir versuchen trotzdem das Teilen-Menü zu triggern, falls das Handy es kann
+            // Falls das Handy 'teilen' kann, versuchen wir es, 
+            // ansonsten macht der Browser einfach den neuen Tab auf.
             link.onclick = (event) => {
                 if (navigator.share) {
-                    const blob = doc.output('blob');
-                    const file = new File([blob], `Protokoll_${l}.pdf`, { type: 'application/pdf' });
+                    const file = new File([pdfBlob], `Protokoll_${l}.pdf`, { type: 'application/pdf' });
                     navigator.share({ files: [file] }).catch(() => {
-                        // Falls Share scheitert, lassen wir den Link-Klick (Öffnen/Download) einfach durchlaufen
+                        // Bei Fehlern lassen wir den Browser-Standard (Neuer Tab) gewähren
                     });
                 }
             };
+            msg("Bereit! Bitte auf Blau drücken.");
         }
     </script>
 </body>
