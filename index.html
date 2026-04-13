@@ -54,9 +54,14 @@
             </div>
         </div>
 
-        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-dark-green text-white font-black py-7 rounded-[2rem] text-xl shadow-2xl active:scale-95 transition-all uppercase tracking-wider">
-            PDF Erstellen & Senden
-        </button>
+        <div class="grid grid-cols-2 gap-3">
+            <button onclick="generatePDF('share')" id="btn-submit" class="bg-dark-green text-white font-black py-5 rounded-2xl text-sm shadow-xl active:scale-95 transition-all uppercase tracking-tight">
+                PDF Senden
+            </button>
+            <button onclick="generatePDF('download')" class="bg-red-600 text-white font-black py-5 rounded-2xl text-sm shadow-xl active:scale-95 transition-all uppercase tracking-tight">
+                PDF Runterladen
+            </button>
+        </div>
     </div>
 
     <input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
@@ -67,9 +72,9 @@
         let currentMode = '';
 
         const translations = {
-            de: { lkw: "LKW Kennzeichen", trailer: "Trailer Kennzeichen", info: "Bemerkung / Info zu den Schäden", tank: "Tank Foto", schaden: "Schaden Fotos (+)", submit: "PDF Erstellen & Senden" },
-            pl: { lkw: "Nr rejestracyjny", trailer: "Nr naczepy", info: "Uwagi / Informacje o szkodach", tank: "Zdjęcie zbiornika", schaden: "Zdjęcia szkód (+)", submit: "Utwórz PDF i wyślij" },
-            ru: { lkw: "Номер тягача", trailer: "Номер прицепа", info: "Примечания / Инфо о повреждениях", tank: "Фото бака", schaden: "Фотографии (+)", submit: "Создать PDF и отправить" }
+            de: { lkw: "LKW Kennzeichen", trailer: "Trailer Kennzeichen", info: "Bemerkung / Info zu den Schäden", tank: "Tank Foto", schaden: "Schaden Fotos (+)", submit: "PDF Senden" },
+            pl: { lkw: "Nr rejestracyjny", trailer: "Nr naczepy", info: "Uwagi / Informacje o schkodach", tank: "Zdjęcie zbiornika", schaden: "Zdjęcia szkód (+)", submit: "Wyślij PDF" },
+            ru: { lkw: "Номер тягача", trailer: "Номер прицепа", info: "Примечания / Инфо о повреждениях", tank: "Фото бака", schaden: "Фотографии (+)", submit: "Отправить PDF" }
         };
 
         function updateLanguage() {
@@ -109,7 +114,7 @@
             reader.readAsDataURL(file);
         };
 
-        async function generatePDF() {
+        async function generatePDF(mode) {
             const lkw = document.getElementById('lkw').value.toUpperCase().trim();
             const trailer = document.getElementById('trailer').value.toUpperCase().trim();
             const infoValue = document.getElementById('info').value.trim();
@@ -159,11 +164,11 @@
                 yPos += 65;
             });
 
-            const pdfBlob = doc.output('blob');
             const fileName = `Protokoll_${trailer}_${lkw}.pdf`;
-            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-            if (navigator.share) {
+            if (mode === 'share' && navigator.share) {
+                const pdfBlob = doc.output('blob');
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
                 try {
                     await navigator.share({
                         files: [file],
@@ -174,7 +179,13 @@
                     console.log("Teilen abgebrochen");
                 }
             } else {
-                doc.save(fileName);
+                // FORCE DOWNLOAD IN NEUEM TAB
+                const pdfData = doc.output('bloburl');
+                const newWindow = window.open(pdfData, '_blank');
+                if (!newWindow) {
+                    // Falls Pop-up Blocker aktiv, normaler Download
+                    doc.save(fileName);
+                }
             }
         }
     </script>
