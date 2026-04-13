@@ -3,150 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LKW Protokoll PDF</title>
+    <title>LKW Protokoll</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: { extend: { colors: { 'vibe-purple': '#6D28D9', 'dark-green': '#1B5E20' } } }
-        }
-    </script>
 </head>
 <body class="bg-slate-100 min-h-screen font-sans p-4">
 
-    <div class="max-w-md mx-auto space-y-4">
-        <header class="bg-white p-4 rounded-2xl shadow flex justify-between items-center border-b-4 border-dark-green">
-            <select id="langSelect" onchange="updateLanguage()" class="bg-slate-100 p-2 rounded-xl font-bold text-sm outline-none">
-                <option value="de">Deutsch 🇩🇪</option>
-                <option value="pl">Polski 🇵🇱</option>
-                <option value="ru">Pусский 🇷🇺</option>
-            </select>
-            <img src="https://ih1.redbubble.net/image.761262054.2536/flat,750x,075,f-pad,750x1000,f8f8f8.jpg" class="h-12 rounded-lg">
+    <div class="max-w-md mx-auto space-y-4 text-center">
+        <header class="bg-white p-4 rounded-2xl shadow border-b-4 border-green-700 flex justify-center">
+             <img src="https://ih1.redbubble.net/image.761262054.2536/flat,750x,075,f-pad,750x1000,f8f8f8.jpg" class="h-16">
         </header>
 
         <div class="bg-white p-6 rounded-[2rem] shadow-lg space-y-4 text-left border border-slate-200">
-            <div>
-                <label id="label-lkw" class="text-xs font-black text-dark-green uppercase ml-1">LKW Kennzeichen</label>
-                <input type="text" id="lkw" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase mt-1 outline-none focus:border-vibe-purple">
-            </div>
-            <div>
-                <label id="label-trailer" class="text-xs font-black text-dark-green uppercase ml-1">Trailer Kennzeichen</label>
-                <input type="text" id="trailer" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase mt-1 outline-none focus:border-vibe-purple">
-            </div>
-            <div>
-                <label id="label-info" class="text-xs font-black text-dark-green uppercase ml-1">Bemerkung / Info</label>
-                <textarea id="info" class="w-full border-2 border-slate-100 p-3 rounded-xl mt-1 outline-none focus:border-vibe-purple" rows="3"></textarea>
-            </div>
+            <input type="text" id="lkw" placeholder="LKW KENNZEICHEN" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
+            <input type="text" id="trailer" placeholder="TRAILER KENNZEICHEN" class="w-full border-2 border-slate-100 p-3 rounded-xl font-bold uppercase outline-none focus:border-purple-600">
+            <textarea id="info" placeholder="BEMERKUNG" class="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-purple-600" rows="2"></textarea>
             
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="triggerCamera('tank')" class="bg-vibe-purple text-white p-4 rounded-2xl shadow-lg active:scale-95 transition-all text-center">
-                    <span id="label-tank" class="block font-black text-[10px] uppercase">Tank Foto</span>
-                </button>
-                <button onclick="triggerCamera('schaden')" class="bg-vibe-purple text-white p-4 rounded-2xl shadow-lg active:scale-95 transition-all text-center">
-                    <span id="label-schaden" class="block font-black text-[10px] uppercase">Schaden Foto (+)</span>
-                </button>
+                <button onclick="document.getElementById('cam-tank').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow">Tank Foto</button>
+                <button onclick="document.getElementById('cam-schaden').click()" class="bg-purple-700 text-white p-4 rounded-2xl font-black text-[10px] uppercase shadow">Schaden (+)</button>
             </div>
-
-            <div class="space-y-2">
-                <div id="prev-tank" class="hidden h-16 rounded-xl overflow-hidden border-2 border-white shadow-sm bg-slate-200"></div>
-                <div id="prev-schaden-container" class="flex flex-wrap gap-2"></div>
-            </div>
+            
+            <div id="status" class="text-xs font-bold text-gray-500 text-center"></div>
         </div>
 
-        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-dark-green text-white font-black py-7 rounded-[2rem] text-xl shadow-2xl active:scale-95 transition-all uppercase tracking-wider">
-            PDF Erstellen & Senden
+        <button onclick="generatePDF()" id="btn-submit" class="w-full bg-green-800 text-white font-black py-6 rounded-[2rem] text-xl shadow-2xl active:scale-95 transition-all uppercase">
+            PDF Erstellen
         </button>
+
+        <div id="backup-zone" class="hidden space-y-3 p-4 bg-yellow-100 rounded-2xl border-2 border-yellow-400 text-sm font-bold">
+            <p>PDF ist fertig! Klicke hier zum Senden:</p>
+            <button id="btn-share-final" class="w-full bg-blue-600 text-white py-4 rounded-xl uppercase shadow-lg">Jetzt an WhatsApp senden</button>
+        </div>
     </div>
 
-    <input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
+    <input type="file" id="cam-tank" accept="image/*" capture="environment" class="hidden">
+    <input type="file" id="cam-schaden" accept="image/*" capture="environment" class="hidden">
 
     <script>
         const { jsPDF } = window.jspdf;
-        let photos = { tank: null, schaden: [] };
-        let currentMode = '';
+        let photoTank = null;
+        let photosSchaden = [];
 
-        const translations = {
-            de: { lkw: "LKW Kennzeichen", trailer: "Trailer Kennzeichen", info: "Bemerkung / Info zu den Schäden", tank: "Tank Foto", schaden: "Schaden Fotos (+)", submit: "PDF Erstellen & Senden" },
-            pl: { lkw: "Nr rejestracyjny", trailer: "Nr naczepy", info: "Uwagi / Informacje o szkodach", tank: "Zdjęcie zbiornika", schaden: "Zdjęcia szkód (+)", submit: "Utwórz PDF i wyślij" },
-            ru: { lkw: "Номер тягача", trailer: "Номер прицепа", info: "Примечания / Инфо о повреждениях", tank: "Фото бака", schaden: "Фотографии (+)", submit: "Создать PDF и отправить" }
-        };
-
-        function updateLanguage() {
-            const lang = document.getElementById('langSelect').value;
-            document.getElementById('label-lkw').innerText = translations[lang].lkw;
-            document.getElementById('label-trailer').innerText = translations[lang].trailer;
-            document.getElementById('label-info').innerText = translations[lang].info;
-            document.getElementById('label-tank').innerText = translations[lang].tank;
-            document.getElementById('label-schaden').innerText = translations[lang].schaden;
-            document.getElementById('btn-submit').innerText = translations[lang].submit;
-        }
-
-        window.triggerCamera = (mode) => {
-            currentMode = mode;
-            document.getElementById('cam').click();
-        };
-
-        document.getElementById('cam').onchange = e => {
-            const file = e.target.files[0];
-            if (!file) return;
+        document.getElementById('cam-tank').onchange = e => {
             const reader = new FileReader();
-            reader.onload = event => {
-                const dataUrl = event.target.result;
-                if (currentMode === 'tank') {
-                    photos.tank = dataUrl;
-                    const p = document.getElementById('prev-tank');
-                    p.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
-                    p.classList.remove('hidden');
-                } else {
-                    photos.schaden.push(dataUrl);
-                    const thumb = document.createElement('div');
-                    thumb.className = "w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-sm";
-                    thumb.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
-                    document.getElementById('prev-schaden-container').appendChild(thumb);
-                }
-            };
-            reader.readAsDataURL(file);
+            reader.onload = ev => { photoTank = ev.target.result; document.getElementById('status').innerText = "Tank-Foto bereit!"; };
+            reader.readAsDataURL(e.target.files[0]);
+        };
+
+        document.getElementById('cam-schaden').onchange = e => {
+            const reader = new FileReader();
+            reader.onload = ev => { photosSchaden.push(ev.target.result); document.getElementById('status').innerText = photosSchaden.length + " Schaden-Fotos bereit!"; };
+            reader.readAsDataURL(e.target.files[0]);
         };
 
         async function generatePDF() {
             const lkw = document.getElementById('lkw').value.toUpperCase().trim();
             const trailer = document.getElementById('trailer').value.toUpperCase().trim();
-            const infoText = document.getElementById('info').value.trim() || "keine Angabe!";
+            if(!lkw || !trailer) return alert("Bitte Kennzeichen eingeben!");
 
-            if(!lkw || !trailer) { alert("Bitte Kennzeichen eingeben!"); return; }
-
+            document.getElementById('btn-submit').innerText = "Wird erstellt...";
+            
             const doc = new jsPDF();
-            doc.setFontSize(20); doc.setTextColor(0, 70, 0); doc.text("LKW ÜBERGABEPROTOKOLL", 20, 25);
-            doc.line(20, 30, 190, 30);
-            doc.setFontSize(11); doc.setTextColor(0,0,0); doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 40);
-            doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text(`LKW: ${lkw}`, 20, 55); doc.text(`Trailer: ${trailer}`, 20, 65);
-            doc.setFontSize(12); doc.text(`Info:`, 20, 80); doc.setFont("helvetica", "normal");
-            doc.text(infoText, 20, 88, { maxWidth: 170 });
+            doc.text("LKW PROTOKOLL", 20, 20);
+            doc.text(`LKW: ${lkw} | Trailer: ${trailer}`, 20, 30);
+            doc.text(`Datum: ${new Date().toLocaleString()}`, 20, 40);
+            doc.text("Info: " + document.getElementById('info').value, 20, 50);
 
-            let yPos = 110;
-            if (photos.tank) {
-                doc.addImage(photos.tank, 'JPEG', 20, yPos, 80, 50);
-                yPos += 65;
-            }
-            photos.schaden.forEach((img, index) => {
-                if (yPos > 230) { doc.addPage(); yPos = 20; }
-                doc.addImage(img, 'JPEG', 20, yPos, 80, 50);
-                yPos += 65;
-            });
+            if(photoTank) doc.addImage(photoTank, 'JPEG', 20, 60, 50, 40);
+            photosSchaden.forEach((img, i) => { doc.addPage(); doc.addImage(img, 'JPEG', 20, 20, 160, 120); });
 
             const pdfBlob = doc.output('blob');
-            const fileName = `Protokoll_${trailer}_${lkw}.pdf`;
+            const fileName = `Protokoll_${lkw}.pdf`;
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({ files: [file], title: 'LKW Protokoll' });
-                } catch (err) { doc.save(fileName); }
-            } else {
-                doc.save(fileName);
-                alert("Teilen nicht möglich. PDF wurde unter Downloads gespeichert!");
-            }
+            // Jetzt zeigen wir den Share-Button an
+            document.getElementById('btn-submit').classList.add('hidden');
+            const bZone = document.getElementById('backup-zone');
+            bZone.classList.remove('hidden');
+
+            document.getElementById('btn-share-final').onclick = async () => {
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ files: [file], title: 'LKW Protokoll' });
+                    } catch (e) {
+                        doc.save(fileName); // Fallback: Download
+                    }
+                } else {
+                    doc.save(fileName); // Fallback: Download
+                }
+            };
         }
     </script>
 </body>
