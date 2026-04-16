@@ -58,7 +58,7 @@
             <button onclick="generatePDF('share')" id="btn-submit" class="bg-dark-green text-white font-black py-5 rounded-2xl text-sm shadow-xl active:scale-95 transition-all uppercase tracking-tight">
                 PDF Senden
             </button>
-            <button onclick="generatePDF('download')" class="bg-red-600 text-white font-black py-5 rounded-2xl text-sm shadow-xl active:scale-95 transition-all uppercase tracking-tight">
+            <button onclick="generatePDF('download')" id="btn-download" class="bg-red-600 text-white font-black py-5 rounded-2xl text-sm shadow-xl active:scale-95 transition-all uppercase tracking-tight">
                 PDF Runterladen
             </button>
         </div>
@@ -72,9 +72,9 @@
         let currentMode = '';
 
         const translations = {
-            de: { lkw: "LKW Kennzeichen", trailer: "Trailer Kennzeichen", info: "Bemerkung / Info zu den Schäden", tank: "Tank Foto", schaden: "Schaden Fotos (+)", submit: "PDF Senden" },
-            pl: { lkw: "Nr rejestracyjny", trailer: "Nr naczepy", info: "Uwagi / Informacje o schkodach", tank: "Zdjęcie zbiornika", schaden: "Zdjęcia szkód (+)", submit: "Wyślij PDF" },
-            ru: { lkw: "Номер тягача", trailer: "Номер прицепа", info: "Примечания / Инфо о повреждениях", tank: "Фото бака", schaden: "Фотографии (+)", submit: "Отправить PDF" }
+            de: { lkw: "LKW Kennzeichen", trailer: "Trailer Kennzeichen", info: "Bemerkung / Info zu den Schäden", tank: "Tank Foto", schaden: "Schaden Fotos (+)", submit: "PDF Senden", download: "PDF Runterladen" },
+            pl: { lkw: "Nr rejestracyjny", trailer: "Nr naczepy", info: "Uwagi / Informacje o szkodach", tank: "Zdjęcie zbiornika", schaden: "Zdjęcia szkód (+)", submit: "Wyślij PDF", download: "Pobierz PDF" },
+            ru: { lkw: "Номер тягача", trailer: "Номер прицепа", info: "Примечания / Инфо о повреждениях", tank: "Фото бака", schaden: "Фотографии (+)", submit: "Отправить PDF", download: "Скачать PDF" }
         };
 
         function updateLanguage() {
@@ -85,6 +85,25 @@
             document.getElementById('label-tank').innerText = translations[lang].tank;
             document.getElementById('label-schaden').innerText = translations[lang].schaden;
             document.getElementById('btn-submit').innerText = translations[lang].submit;
+            document.getElementById('btn-download').innerText = translations[lang].download;
+        }
+
+        // Hilfsfunktion zur Bildverkleinerung gegen graue Balken bei alten Handys
+        async function resizeImage(dataUrl, maxWidth = 1000) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scale = maxWidth / img.width;
+                    if (scale >= 1) return resolve(dataUrl);
+                    canvas.width = maxWidth;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.75));
+                };
+                img.src = dataUrl;
+            });
         }
 
         window.triggerCamera = (mode) => {
@@ -96,18 +115,20 @@
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = event => {
-                const dataUrl = event.target.result;
+            reader.onload = async event => {
+                // Bild beim Einlesen optimieren
+                const optimizedUrl = await resizeImage(event.target.result);
+                
                 if (currentMode === 'tank') {
-                    photos.tank = dataUrl;
+                    photos.tank = optimizedUrl;
                     const p = document.getElementById('prev-tank');
-                    p.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
+                    p.innerHTML = `<img src="${optimizedUrl}" class="w-full h-full object-cover">`;
                     p.classList.remove('hidden');
                 } else {
-                    photos.schaden.push(dataUrl);
+                    photos.schaden.push(optimizedUrl);
                     const thumb = document.createElement('div');
                     thumb.className = "w-12 h-12 rounded-lg overflow-hidden border-2 border-white shadow-sm";
-                    thumb.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
+                    thumb.innerHTML = `<img src="${optimizedUrl}" class="w-full h-full object-cover">`;
                     document.getElementById('prev-schaden-container').appendChild(thumb);
                 }
             };
@@ -121,36 +142,26 @@
             const infoText = infoValue === "" ? "keine Angabe!" : infoValue;
 
             if(!lkw || !trailer) {
-                alert("Bitte Kennzeichen für LKW und Trailer eingeben!");
+                alert("Bitte Kennzeichen eingeben!");
                 return;
             }
 
             const doc = new jsPDF();
-            
-            doc.setFontSize(20);
-            doc.setTextColor(0, 70, 0); 
+            doc.setFontSize(20); doc.setTextColor(0, 70, 0); 
             doc.text("LKW ÜBERGABEPROTOKOLL", 20, 25);
-            doc.setDrawColor(0, 70, 0);
             doc.line(20, 30, 190, 30);
-
-            doc.setFontSize(11);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 40);
             
-            doc.setFontSize(14);
+            doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+            doc.text(`Datum: ${new Date().toLocaleString('de-DE')}`, 20, 40);
             doc.setFont("helvetica", "bold");
             doc.text(`LKW: ${lkw}`, 20, 55);
             doc.text(`Trailer: ${trailer}`, 20, 65);
-            
-            doc.setFontSize(12);
-            doc.text(`Bemerkung / Info zu den Schäden:`, 20, 80);
+            doc.text(`Bemerkung:`, 20, 80);
             doc.setFont("helvetica", "normal");
             doc.text(infoText, 20, 88, { maxWidth: 170 });
 
             let yPos = 110;
-
             if (photos.tank) {
-                doc.setFontSize(10);
                 doc.text("Tank Foto:", 20, yPos - 3);
                 doc.addImage(photos.tank, 'JPEG', 20, yPos, 80, 50);
                 yPos += 65;
@@ -158,7 +169,6 @@
 
             photos.schaden.forEach((img, index) => {
                 if (yPos > 230) { doc.addPage(); yPos = 20; }
-                doc.setFontSize(10);
                 doc.text(`Schaden Foto ${index + 1}:`, 20, yPos - 3);
                 doc.addImage(img, 'JPEG', 20, yPos, 80, 50);
                 yPos += 65;
@@ -170,22 +180,11 @@
                 const pdfBlob = doc.output('blob');
                 const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
                 try {
-                    await navigator.share({
-                        files: [file],
-                        title: 'LKW Protokoll',
-                        text: `Protokoll für Trailer ${trailer} / LKW ${lkw}`
-                    });
-                } catch (err) {
-                    console.log("Teilen abgebrochen");
-                }
+                    await navigator.share({ files: [file], title: 'LKW Protokoll' });
+                } catch (err) { console.log("Share cancelled"); }
             } else {
-                // FORCE DOWNLOAD IN NEUEM TAB
                 const pdfData = doc.output('bloburl');
-                const newWindow = window.open(pdfData, '_blank');
-                if (!newWindow) {
-                    // Falls Pop-up Blocker aktiv, normaler Download
-                    doc.save(fileName);
-                }
+                window.open(pdfData, '_blank');
             }
         }
     </script>
